@@ -1,0 +1,69 @@
+# =========================================================================
+# Unity Generated Folders
+# =========================================================================
+[L|l]ibrary/
+[T|t]emp/
+[O|o]bj/
+[B|b]uild/
+[B|b]uilds/
+[L|l]ogs/
+[M|m]emoryCaptures/
+[U|u]serSettings/
+[R|r]ecordings/
+
+# =========================================================================
+# Asset Store Packages & Asset Caches
+# =========================================================================
+# Ignore Asset Store packages imported into Assets/
+# (Uncomment if you don't want to track third-party asset packages)
+# /[A|a]ssets/AssetStoreTools*
+
+# =========================================================================
+# IDE & Code Editor Files
+# =========================================================================
+# Visual Studio / VS Code
+.vs/
+.vscode/
+/*.csproj
+/*.unityproj
+/*.sln
+/*.suo
+/*.user
+/*.userprefs
+/*.pidb
+/*.booproj
+/*.svd
+/*.pdb
+/*.opendb
+/*.db
+*.pidb.meta
+*.pdb.meta
+*.csproj.meta
+*.unityproj.meta
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# =========================================================================
+# Build Artifacts & Packages
+# =========================================================================
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# =========================================================================
+# OS & System Files
+# =========================================================================
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
+sysinfo.txt
+
+# =========================================================================
+# Crash Reports & Diagnostics
+# =========================================================================
+sysinfo.txt
+*.stackdump
