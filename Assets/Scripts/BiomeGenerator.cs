@@ -439,8 +439,8 @@ public class BiomeGenerator {
 
                 // 5. Vegetation Placement Logic: place vegetation based on spacing and density
                 int index = 0;
-                bool biomeWaterLevel = bestBiome.name == "Grassland" || bestBiome.name == "Temperate Forest" || bestBiome.name == "Taiga" || bestBiome.name == "Rainforest";
-                if (heightMap[x, y] < bestBiome.heightColors[2].height && biomeWaterLevel) continue;        // skip vegetation placement if height is below the green colors (weater or shore)
+                bool biomeWaterLevel = bestBiome.name == "Grassland" || bestBiome.name == "Temperate Forest" || bestBiome.name == "Taiga" || bestBiome.name == "Rainforest" || bestBiome.name == "Savanna" || bestBiome.name == "Tundra"; // these biomes have water level at the green color (heightColors[1]) - we don't want vegetation to be placed below that level
+                if (heightMap[x, y] < bestBiome.heightColors[0].height) continue;        // skip vegetation placement if height is below the green colors (weater or shore)
                 if (continentalnessMap[x, y] < oceanThreshold + outterGradientDelta && bestBiome.name != "Ocean") continue;       // skip vegetation placement if we are in the ocean biome and not in the actual beach                            
                 if (bestBiome.name == "Ocean" && (continentalnessMap[x, y] >= oceanThreshold || newCalculatedHeight < 0.44f)) continue; // skip vegetation placement if we are in the ocean biome and not in the actual beach
 
