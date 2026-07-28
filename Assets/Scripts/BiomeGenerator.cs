@@ -286,6 +286,7 @@ public class BiomeGenerator {
                     biomeColorWeights[i] = biomeWeightsMap[x, y, i];
                 }
 
+                int winningBiomeIndex = -1;
 
                 //biomeMap[x, y] = biomes[biomeIndex];                    // we store the biome in the biomeMap
 
@@ -342,16 +343,10 @@ public class BiomeGenerator {
                         // loop through all biomes and blend their colors based on the modified weights to get the final color for this pixel
                         Color blendedColor = Color.black;
                         // cycle trhough all biomes
-                        for (int k = 0; k < biomes.Length; k++) {
-                            Color biomeColor2;
-                            if (k == 7) {
-                                biomeColor2 = biomes[7].heightColors[2].color; //new Color(0.8f, 0.2f, 0.0f, 1.0f);//  //if we are in the ocean biome, we want the beach color for blending
-                            } else {
-                                biomeColor2 = biomes[7].heightColors[2].color;//EvaluateBiomeColorAtHeightWithTransition(biomes[k], blendedHeightMap[x, y], biomeWeightsMap[x, y, k]);
-                            }
 
-                            blendedColor += biomeColorWeights[k] * biomeColor2;
-                        }
+                        blendedColor = biomes[7].heightColors[2].color;   // if there is any biome weight (transition part), then just use beach color
+
+
 
                         colorMap[y * mapChunkSize + x] = blendedColor;  // if we are in the coastal strip, we blend the beach color with the land biome color - transition from ocean to beach to land
                     } else {
@@ -375,6 +370,12 @@ public class BiomeGenerator {
                         biomeWeightsMap[x, y, k] /= sum1 > 0 ? sum1 : 1f;
                     }
 
+                    float[] weights = new float[biomes.Length];
+                    for (int k = 0; k < biomes.Length; k++) {
+                        weights[k] = biomeWeightsMap[x, y, k];
+                    }
+
+                    winningBiomeIndex = GetWinningBiomeIndex(weights);
 
                 } else {
                     // this is pure COLOR BLENDING LOGIC
@@ -400,6 +401,8 @@ public class BiomeGenerator {
                         //biomeWeightsMap[x, y, k] = biomeColorWeights[k];        // update the biomeWeightsMap with the modified weights for color blending
                     }
 
+                    winningBiomeIndex = GetWinningBiomeIndex(biomeColorWeights);
+
                     // the same code for color assignment depending on biome and height
                     Color blendedColor = Color.black;
 
@@ -417,22 +420,14 @@ public class BiomeGenerator {
 
                     colorMap[y * mapChunkSize + x] = blendedColor;
 
+
+
                 }
 
                 float newCalculatedHeight = blendedHeightMap[x, y];         // tam ko je plaza se drugace izracuna heightMap, da je barva plaze bolj naravna - to vrednost rabimo za mejo za vegetacijo
                 blendedHeightMap[x, y] = tempHeight;
 
                 // determine the "winning" biome for each pixel based on the highest weight
-                float maxWeight = -1f;
-                int winningBiomeIndex = 0;
-
-
-                for (int i = 0; i < biomes.Length; i++) {
-                    if (biomeWeightsMap[x, y, i] > maxWeight) {         // biomeColorWeights is basically biomeWeightsMap[x, y, i] but we use it here to avoid modifying the original biomeWeightsMap
-                        maxWeight = biomeWeightsMap[x, y, i];
-                        winningBiomeIndex = i;
-                    }
-                }
 
                 Biome bestBiome = biomes[winningBiomeIndex];
                 biomeMap[x, y] = bestBiome;
@@ -467,6 +462,20 @@ public class BiomeGenerator {
         return new BiomeMapData(colorMap, biomeWeightsMap, blendedHeightMap, biomeMap, vegetationPosition);
     }
 
+    int GetWinningBiomeIndex(float[] biomeWeights) {
+        int winningIndex = 0;
+        float maxWeight = biomeWeights[0];
+
+        for (int i = 1; i < biomeWeights.Length; i++) {
+            if (biomeWeights[i] > maxWeight) {
+                maxWeight = biomeWeights[i];
+                winningIndex = i;
+            }
+        }
+
+        return winningIndex;
+    }
+
     // funkcija ki vrne barvo bioma glede na višino (heightValue) in barvne stopnje (heightColors) bioma - z gradientnim prehodom
     Color EvaluateBiomeColorAtHeightWithTransition(Biome biome, float heightValue, float biomeWeight) {
         HeightColor[] stops = biome.heightColors;
@@ -482,7 +491,7 @@ public class BiomeGenerator {
 
 
         // ce smo na plazi, potem vrni barvo plaze brez prehoda - to odpravi leak modre barve na plazi
-        if (biome.name == "Ocean" && heightValue >= stops[2].height) {
+        if (biome.name == "Ocean" && heightValue > stops[2].height) {
             return stops[2].color;//new Color(0.0f, 0.8f, 0.2f, 1.0f); //
         }
 

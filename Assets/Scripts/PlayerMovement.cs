@@ -25,6 +25,7 @@ public class PlayerMovement : MonoBehaviour {
     // Stored here because input callbacks fire on change,
     // but we apply movement every Update
     private Vector2 moveInput;
+    private float upDownInput;
     private Vector2 lookInput;
     private bool isSprinting;
     private bool jumpRequested;
@@ -69,6 +70,11 @@ public class PlayerMovement : MonoBehaviour {
     private void HandleMovement() {
         // moveInput is in local space: x = strafe, y = forward
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
+
+        // Add vertical movement (flying)
+        if (!useGravity) {
+            move += Vector3.up * upDownInput;
+        }
 
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
         cc.Move(move * currentSpeed * Time.deltaTime);
@@ -118,4 +124,23 @@ public class PlayerMovement : MonoBehaviour {
     public void OnSprint(InputValue value) {    // must be set to Value and not Button in Input Actions
         isSprinting = value.isPressed;  // true while sprint button held
     }
+
+    public void OnFly(InputValue value) {
+        if (value.isPressed) {
+            useGravity = !useGravity;
+        }
+    }
+
+    public void OnUp(InputValue value) {
+        if (useGravity) return; // only allow flying if gravity is disabled
+
+        upDownInput = value.isPressed ? 1f : 0f; // 1 if pressed, 0 if released
+    }
+
+    public void OnDown(InputValue value) {
+        if (useGravity) return; // only allow flying if gravity is disabled
+
+        upDownInput = value.isPressed ? -1f : 0f; // -1 if pressed, 0 if released
+    }
+
 }
