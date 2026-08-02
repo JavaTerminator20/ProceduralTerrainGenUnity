@@ -228,7 +228,7 @@ public class EndlessTerrain : MonoBehaviour {
             // assign the texture through sharedMaterial so Unity does not auto-instantiate a leaking material. sharedMaterial is pointer to the original asset sitting in project folders.
             meshRenderer.sharedMaterial.mainTexture = texture;
 
-            //SpawnVegetation();
+            SpawnVegetation();
 
             UpdateTerrainChunk();
         }
