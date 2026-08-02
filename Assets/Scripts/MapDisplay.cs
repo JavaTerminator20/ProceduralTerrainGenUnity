@@ -1,4 +1,3 @@
-using UnityEditor.ShaderGraph;
 using UnityEngine;
 
 public class MapDisplay : MonoBehaviour {

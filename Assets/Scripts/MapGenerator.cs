@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using System.Threading;
 using System.Collections.Generic;
-using Mono.Cecil.Cil;
 using Unity.VisualScripting;
 
 //[ExecuteAlways]
@@ -64,6 +63,10 @@ public class MapGenerator : MonoBehaviour {
     public Biome[] biomes = BiomeGenerator.biomes;
     [Range(0.1f, 3f)]
     public float biomeHeightTransitionWidth = 1f; // <1 = sharper bands, >1 = smoother transitions
+
+    [Header("Coastline")]
+    [Range(0f, 1f)]
+    public float oceanThreshold = 0.304f;   // continentalness below which an area is ocean/coast rather than land
 
     //public GameObject vegetation;
 

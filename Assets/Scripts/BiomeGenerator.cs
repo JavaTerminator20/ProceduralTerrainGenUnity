@@ -204,6 +204,8 @@ public class BiomeGenerator {
         //float density = 0.03f;
         System.Random rndm = new System.Random(1235123 * (int)center.x + 1239012 * (int)center.y);
 
+        float oceanThreshold = mapGen.oceanThreshold;    // exposed in the inspector - the rest of the coastline math below is expressed relative to this, so it can be tuned freely
+
         // blending continent noise with height noise
         float[,] blendedHeightMap = new float[mapChunkSize, mapChunkSize];
         for (int y = 0; y < mapChunkSize; y++) {
@@ -295,23 +297,35 @@ public class BiomeGenerator {
                 // -----------------TERRAIN COLOR LOGIC------------------------
 
                 // CONSTANTS
-                const float oceanThreshold = 0.344f;                     // threshold for continentalness below which we consider the area to be ocean
-                const float beachThreshold = 0.31f;                     // threshold for continentalness above (and below oceanThreshold) which we consider the area to be beach (coastal strip)
+                const float beachWidth = 0.034f;
+                float beachThreshold = oceanThreshold - beachWidth;                     // threshold for continentalness above (and below oceanThreshold) which we consider the area to be beach (coastal strip)
                 const float outterGradientDelta = 0.02f;                 // od oceanThresholda, koliko bo velik gradient navzven proti celini - kako dolgi je prehod kjer eliminiramo ocean biome v kontinent
+
+                // these describe the coastal band in terms *relative* to beachThreshold/oceanThreshold (ratio 0 = ocean edge, 1 = land edge)
+                // instead of absolute continentalness/height numbers, so the whole coast keeps looking the same no matter where oceanThreshold is set
+                const float coastEdgeHeight = 0.51f;                     // blendedHeightMap value targeted right at the land-facing edge of the coastal band (ratio = 1)
+                const float coastEdgeHeightRange = 0.07f;                // width (in blendedHeightMap units) of the oceanSupression falloff below coastEdgeHeight
+                const float oceanEdgeSmoothingFraction = 0.3f;           // fraction of beachWidth (nearest the ocean edge) used to smooth into the true ocean height, avoiding a sharp ring
+                const float sandEdgeStartRatio = 0.7f;                   // ratio across the coastal band at which we start blending toward pure sand color
 
                 // BLENDING BIOME COLORS BASED ON HEIGHT AND WEIGHTS
                 float tempHeight = blendedHeightMap[x, y];
 
                 // inside an ocean biome (including the coastal strip)
                 if (continentalnessMap[x, y] <= oceanThreshold) {
+                    // ratio across the coastal band: 0 at the ocean-facing edge (beachThreshold), 1 at the land-facing edge (oceanThreshold)
+                    float coastRatio = continentalnessMap[x, y] > beachThreshold
+                        ? Mathf.InverseLerp(beachThreshold, oceanThreshold, continentalnessMap[x, y])
+                        : 0f;
+
                     // beach color for the narrow coastal strip - we modify the height of the terrain to achieve coast like colors at the edge of water
                     if (continentalnessMap[x, y] > beachThreshold) {
-                        float ratio = Mathf.InverseLerp(beachThreshold, oceanThreshold, continentalnessMap[x, y]);                    // when ratio ~ 0 we are near the ocean (edge of beach), height is mostly continentalness
-                        blendedHeightMap[x, y] = 0.7f * heightMap[x, y] * (1.0f - ratio) + 1.5f * continentalnessMap[x, y] * ratio;   // making beach blend - height for color is made from height map and continentalness blended together, but when we go from the ocean to the land the ratio changes
+                        blendedHeightMap[x, y] = Mathf.Lerp(0.7f * heightMap[x, y], coastEdgeHeight, coastRatio);   // making beach blend - height eases from the raw terrain height towards a fixed coast-edge height as we approach land
 
                         // this creates transition from the above blended coastal transition to the actual height of ocean (saved in tempHeight) - without this you get nasty sharp ring around the coast in the water
-                        if (continentalnessMap[x, y] < beachThreshold + 0.01f) {
-                            float ratio2 = Mathf.InverseLerp(beachThreshold + 0.01f, beachThreshold, continentalnessMap[x, y]);
+                        float oceanEdgeSmoothWidth = beachWidth * oceanEdgeSmoothingFraction;
+                        if (continentalnessMap[x, y] < beachThreshold + oceanEdgeSmoothWidth) {
+                            float ratio2 = Mathf.InverseLerp(beachThreshold + oceanEdgeSmoothWidth, beachThreshold, continentalnessMap[x, y]);
                             ratio2 = (float)Math.Pow(ratio2, 0.8f);         //naredimo funkcijo da je prehod pocasen na strani oceana
                             blendedHeightMap[x, y] = ratio2 * tempHeight + (1.0f - ratio2) * blendedHeightMap[x, y];
                         }
@@ -320,43 +334,19 @@ public class BiomeGenerator {
                     // assign the color corresponding to the height (previously manipulated)
                     Color biomeColor = EvaluateBiomeColorAtHeightWithTransition(biomes[7], blendedHeightMap[x, y], biomeWeightsMap[x, y, 7]);
 
-                    // this part of the code is responsible for the gradient of colors at the very edge of the coast (on the boarder of continent)
-                    // blend the tiny band of beach that borders the continent
-                    if (continentalnessMap[x, y] > 0.34f) {
-                        // area of pure beach color, (kinda useless) - prehod med kontinentom in 100% plazo?? - to sluzi temu da je vedno 0.1 velik pas plaze tudi ce je teren prenizko in bi sicer bil obarvan modro
-
-                        // landFallOff is used to suppress all non-beach biomes in the coastal strip, so that we get a clean beach color there without wierd blends of land biomes
-                        float landFalloff = Mathf.InverseLerp(0.344f, 0.353f, continentalnessMap[x, y]); // 0 at 0.34, 1 at 0.45 -- so that the color at 0.34 is fully beach - no weight of other biomes
-                        for (int k = 0; k < biomes.Length; k++) {
-                            if (k != 7) biomeColorWeights[k] *= landFalloff;
-                        }
-
-                        float beachRatio = Mathf.InverseLerp(0.360f, 0.344f, continentalnessMap[x, y]); // ratio of how much beach color to blend in (regarding continentalness) (0 at 0.36 - land, 1 at 0.344 - beach)
-                        biomeColorWeights[7] = beachRatio;      // gradient of beach color
-
-                        // normalize weights becase we modified them and we want them to sum up to 1 for proper blending
-                        float sum3 = biomeColorWeights.Sum();
-                        for (int k = 0; k < biomes.Length; k++) {
-                            biomeColorWeights[k] /= sum3 > 0 ? sum3 : 1f; // re-normalize color weights after zeroing out ocean
-                        }
-
-                        // loop through all biomes and blend their colors based on the modified weights to get the final color for this pixel
-                        Color blendedColor = Color.black;
-                        // cycle trhough all biomes
-
-                        blendedColor = biomes[7].heightColors[2].color;   // if there is any biome weight (transition part), then just use beach color
-
-
-
-                        colorMap[y * mapChunkSize + x] = blendedColor;  // if we are in the coastal strip, we blend the beach color with the land biome color - transition from ocean to beach to land
-                    } else {
-                        colorMap[y * mapChunkSize + x] = biomeColor;    // if we are in the deep ocean, we just use the ocean color based on height without any blending with land biomes
+                    // blend in a clean sand color right at the land-facing edge of the coastal band, so there's always a visible beach strip
+                    // regardless of how the height/continentalness gradient happens to line up
+                    if (coastRatio > sandEdgeStartRatio) {
+                        float sandRatio = Mathf.InverseLerp(sandEdgeStartRatio, 1f, coastRatio);
+                        biomeColor = Color.Lerp(biomeColor, biomes[7].heightColors[2].color, sandRatio);
                     }
+
+                    colorMap[y * mapChunkSize + x] = biomeColor;
 
                     // MANIPULATION OF TERRAIN HEIGHT AT THE COAST - we create a gradual slope from the ocean to the land
                     // zato da je morje ravno takoj ko pridemo iz plaze - da ni vkrivljeno
                     float sum1 = 0;
-                    float oceanSupression = Mathf.InverseLerp(0.44f, 0.51f, blendedHeightMap[x, y]); // suppress all other biomes near the water part of coast, but keep full biome weights once we are far enough from the coast (>0.5f)
+                    float oceanSupression = Mathf.InverseLerp(coastEdgeHeight - coastEdgeHeightRange, coastEdgeHeight, blendedHeightMap[x, y]); // suppress all other biomes near the water part of coast, but keep full biome weights once we are far enough from the coast
                     oceanSupression = Mathf.Max(0.000001f, oceanSupression); // prevent division by zero
                     for (int k = 0; k < biomes.Length; k++) {                                        // we use blendedHeightMap to match the shape of the beach (that was created by manipulating the blendedHeightMap before)
                         if (k == 7) {                                                                // suppress non-ocean biomes in ocean areas, but with a smooth transition near the coast
@@ -437,7 +427,7 @@ public class BiomeGenerator {
                 bool biomeWaterLevel = bestBiome.name == "Grassland" || bestBiome.name == "Temperate Forest" || bestBiome.name == "Taiga" || bestBiome.name == "Rainforest" || bestBiome.name == "Savanna" || bestBiome.name == "Tundra"; // these biomes have water level at the green color (heightColors[1]) - we don't want vegetation to be placed below that level
                 if (heightMap[x, y] < bestBiome.heightColors[0].height) continue;        // skip vegetation placement if height is below the green colors (weater or shore)
                 if (continentalnessMap[x, y] < oceanThreshold + outterGradientDelta && bestBiome.name != "Ocean") continue;       // skip vegetation placement if we are in the ocean biome and not in the actual beach                            
-                if (bestBiome.name == "Ocean" && (continentalnessMap[x, y] >= oceanThreshold || newCalculatedHeight < 0.44f)) continue; // skip vegetation placement if we are in the ocean biome and not in the actual beach
+                if (bestBiome.name == "Ocean" && (continentalnessMap[x, y] >= oceanThreshold || newCalculatedHeight < coastEdgeHeight - coastEdgeHeightRange)) continue; // skip vegetation placement if we are in the ocean biome and not in the actual beach
 
                 //if (bestBiome.name != "Rainforest") continue; // skip vegetation placement if we are not in the rainforest biome (for now, we only place vegetation in the rainforest biome)
 
