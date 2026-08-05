@@ -18,8 +18,8 @@ RenderSettings:
   m_FogColor: {r: 1, g: 1, b: 1, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.001
-  m_LinearFogStart: 1500
-  m_LinearFogEnd: 1900
+  m_LinearFogStart: 3400
+  m_LinearFogEnd: 3600
   m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
@@ -865,7 +865,7 @@ Transform:
   m_GameObject: {fileID: 945618792}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2986, y: 400, z: 2519}
+  m_LocalPosition: {x: -12750, y: 400, z: -4174}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1086,7 +1086,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a4b3e73cd55bf2419ddba6a537b8afd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
-  drawMode: 5
+  drawMode: 0
   mapSize: 1000
   sampleInterval: 30
   editorPreviewLOD: 0
@@ -2239,12 +2239,12 @@ MonoBehaviour:
   detailLevels:
   - lod: 0
     visibleDstThreshold: 400
-  - lod: 2
+  - lod: 0
     visibleDstThreshold: 800
-  - lod: 4
+  - lod: 0
     visibleDstThreshold: 1200
-  - lod: 8
-    visibleDstThreshold: 1800
+  - lod: 0
+    visibleDstThreshold: 3000
   viewer: {fileID: 945618796}
   mapMaterial: {fileID: 2100000, guid: 770a8e3c3a987fb4da76194a66c85700, type: 2}
 --- !u!1001 &2069368130

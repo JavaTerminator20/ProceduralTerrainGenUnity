@@ -26,6 +26,8 @@ public static class TextureGenerator {
 
                 if (drawMode == MapGenerator.DrawMode.TemperatureMap) {
                     colorMap[y * width + x] = new Color(clrVal, 0.0f, 0.0f, 1.0f);
+                } else if (drawMode == MapGenerator.DrawMode.HumidityMap) {
+                    colorMap[y * width + x] = new Color(0.0f, 0.0f, clrVal, 1.0f);
                 } else {
                     colorMap[y * width + x] = new Color(clrVal, clrVal, clrVal, 1.0f);
                 }

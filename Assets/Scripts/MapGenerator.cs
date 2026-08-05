@@ -6,7 +6,7 @@ using Unity.VisualScripting;
 
 //[ExecuteAlways]
 public class MapGenerator : MonoBehaviour {
-    public enum DrawMode { HeightMap, ContinentMap, CombinedHeight, ColorMap, TemperatureMap, BiomeMap, BiomeMesh, View };   // s tem ustvarimo nekaksen drop-down meni, ker ima lahko spremeljivka drawMode omejeno stavilo vrednosti
+    public enum DrawMode { HeightMap, ContinentMap, CombinedHeight, ColorMap, TemperatureMap, HumidityMap, BiomeMap, BiomeMesh, View };   // s tem ustvarimo nekaksen drop-down meni, ker ima lahko spremeljivka drawMode omejeno stavilo vrednosti
     public DrawMode drawMode;               // s tem ustvarimo nekaksen drop-down meni, ker ima lahko spremeljivka drawMode omejeno stavilo vrednosti
     public int mapSize = 3000;              // to je velikost dela mape (2d plosce), ki ga bomo generirali v editorju, da lahko vidimo, kako bo izgledala
     public float sampleInterval = 3.0f;
@@ -59,14 +59,14 @@ public class MapGenerator : MonoBehaviour {
     [Header("Vegetation")]
     public bool globalGPUInstancingDisable = false;
 
+    [Header("Coastline")]
+    [Range(0f, 1f)]
+    public float oceanThreshold = 0.344f;   // continentalness below which an area is ocean/coast rather than land
+
     [Header("Biomes")]
     public Biome[] biomes = BiomeGenerator.biomes;
     [Range(0.1f, 3f)]
     public float biomeHeightTransitionWidth = 1f; // <1 = sharper bands, >1 = smoother transitions
-
-    [Header("Coastline")]
-    [Range(0f, 1f)]
-    public float oceanThreshold = 0.304f;   // continentalness below which an area is ocean/coast rather than land
 
     //public GameObject vegetation;
 
@@ -111,6 +111,12 @@ public class MapGenerator : MonoBehaviour {
         }//
         else if (drawMode == DrawMode.CombinedHeight) {
             display.DrawTexture(TextureGenerator.TextureFromHeightMap(GetChunkCombinedHeightMap(Vector2.zero, mapSize), DrawMode.CombinedHeight), sampleInterval);
+        }//
+        else if (drawMode == DrawMode.TemperatureMap) {
+            display.DrawTexture(TextureGenerator.TextureFromHeightMap(GetChunkTemperatureMap(Vector2.zero, mapSize), DrawMode.TemperatureMap), sampleInterval);
+        }//
+        else if (drawMode == DrawMode.HumidityMap) {
+            display.DrawTexture(TextureGenerator.TextureFromHeightMap(GetChunkHumidityMap(Vector2.zero, mapSize), DrawMode.HumidityMap), sampleInterval);
         }
 
         // show each biome in its own color
@@ -359,7 +365,7 @@ public class MapGenerator : MonoBehaviour {
 
     // this is the same as temperature map, just different seed and different noiseScale - humidity changes more often than temperature
     public float[,] GetChunkHumidityMap(Vector2 center, int chunkSize) {
-        return Noise.GenerateNoiseMap(chunkSize, chunkSize, biomeNoiseScale * humidityFactor, biomeOctaves, biomePersistance, biomeLacunarity, biomeSeed + 10, center + biomeOffset);
+        return Noise.GenerateNoiseMap(chunkSize, chunkSize, biomeNoiseScale * humidityFactor, biomeOctaves, biomePersistance, biomeLacunarity, biomeSeed * 747796405 + 289133645, center + biomeOffset);
     }
 
     // this method is called whenever the public variable values are changed in the inspector
