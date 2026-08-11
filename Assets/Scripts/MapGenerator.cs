@@ -210,12 +210,16 @@ public class MapGenerator : MonoBehaviour {
             Start();
 
             EndlessTerrain endlessTerrain = GetComponent<EndlessTerrain>();
-            //EndlessTerrain.terrainChunkDictionary.Clear();
+            //EndlessTerrain.terrainChunkDictionary.Clear();            // to dvoje se zgodi v endlessTerrain.Start()
             //EndlessTerrain.terrainChunksVisibleLastUpdate.Clear();
             endlessTerrain.Start();
 
             UnityEditor.EditorApplication.update += EditorUpdate;
-            UnityEditor.EditorApplication.update += endlessTerrain.EditorUpdate;
+
+            // to je useless ker ima EndlessTerrain atribut [ExecuteAlways] in class declaration, 
+            // kar pomeni da se bo Update metoda klicala sama od sebe (ko bo mouse premaknjen nad editor window)
+            // zgornja vrstica pa je nujna, saj MapGenerator nima tega atributa
+            // UnityEditor.EditorApplication.update += endlessTerrain.EditorUpdate;
         }
     }
 

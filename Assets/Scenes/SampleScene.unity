@@ -18,8 +18,8 @@ RenderSettings:
   m_FogColor: {r: 1, g: 1, b: 1, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.001
-  m_LinearFogStart: 3400
-  m_LinearFogEnd: 3600
+  m_LinearFogStart: 2500
+  m_LinearFogEnd: 2700
   m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
@@ -341,7 +341,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: -3000, y: 1, z: 3000}
+  m_LocalScale: {x: -3200, y: 1, z: 3200}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -865,7 +865,7 @@ Transform:
   m_GameObject: {fileID: 945618792}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -12750, y: 400, z: -4174}
+  m_LocalPosition: {x: -7599, y: 62, z: 940}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1086,9 +1086,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a4b3e73cd55bf2419ddba6a537b8afd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
-  drawMode: 0
-  mapSize: 1000
-  sampleInterval: 30
+  drawMode: 3
+  mapSize: 800
+  sampleInterval: 40
   editorPreviewLOD: 0
   noiseScale: 400
   octaves: 8
@@ -1169,6 +1169,7 @@ MonoBehaviour:
   biomeSeed: 17
   biomeOffset: {x: 44, y: 120}
   globalGPUInstancingDisable: 1
+  oceanThreshold: 0.344
   biomes:
   - name: Tundra
     color: {r: 0.6, g: 0.8, b: 0.8, a: 1}
@@ -1285,7 +1286,7 @@ MonoBehaviour:
       gpuInstancing: 0
     vegSpacing: 30
   - name: Taiga
-    color: {r: 0.13843894, g: 0.4811321, b: 0.29767007, a: 1}
+    color: {r: 0.10196079, g: 0.3019608, b: 0.14901961, a: 1}
     biomeMeshHeightMultiplier: 280
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1426,7 +1427,7 @@ MonoBehaviour:
       gpuInstancing: 1
     vegSpacing: 30
   - name: Temperate Forest
-    color: {r: 0.2, g: 0.5, b: 0.1, a: 1}
+    color: {r: 0.227451, g: 0.45882356, b: 0.11764707, a: 1}
     biomeMeshHeightMultiplier: 250
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1552,7 +1553,7 @@ MonoBehaviour:
       gpuInstancing: 1
     vegSpacing: 30
   - name: Grassland
-    color: {r: 0.4, g: 0.7, b: 0.2, a: 1}
+    color: {r: 0.5019608, g: 0.8000001, b: 0.3019608, a: 1}
     biomeMeshHeightMultiplier: 130
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1666,7 +1667,7 @@ MonoBehaviour:
       gpuInstancing: 1
     vegSpacing: 20
   - name: Desert
-    color: {r: 0.9, g: 0.8, b: 0.5, a: 1}
+    color: {r: 0.9333334, g: 0.85098046, b: 0.7019608, a: 1}
     biomeMeshHeightMultiplier: 220
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1786,7 +1787,7 @@ MonoBehaviour:
       gpuInstancing: 0
     vegSpacing: 24
   - name: Savanna
-    color: {r: 0.7, g: 0.6, b: 0.2, a: 1}
+    color: {r: 0.8117648, g: 0.6431373, b: 0.33333334, a: 1}
     biomeMeshHeightMultiplier: 130
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1885,7 +1886,7 @@ MonoBehaviour:
       gpuInstancing: 0
     vegSpacing: 20
   - name: Rainforest
-    color: {r: 0, g: 0.3, b: 0.1, a: 1}
+    color: {r: 0.323568, g: 0.64199996, b: 0.33550924, a: 1}
     biomeMeshHeightMultiplier: 250
     biomeMeshHeightCurve:
       serializedVersion: 2
@@ -1933,6 +1934,8 @@ MonoBehaviour:
       color: {r: 0.30662134, g: 0.47843137, b: 0.2851451, a: 1}
     - height: 0.8
       color: {r: 0.654902, g: 0.654902, b: 0.654902, a: 1}
+    - height: 0.9
+      color: {r: 0.809, g: 0.809, b: 0.809, a: 1}
     idealTemp: 0.8
     idealHumidity: 0.9
     spread: 0.02
@@ -2207,7 +2210,6 @@ MonoBehaviour:
     vegetationTypes: []
     vegSpacing: 0
   biomeHeightTransitionWidth: 0.6
-  oceanThreshold: 0.344
   useBorder: 0
 --- !u!4 &1722778688
 Transform:
@@ -2239,12 +2241,12 @@ MonoBehaviour:
   detailLevels:
   - lod: 0
     visibleDstThreshold: 400
-  - lod: 0
+  - lod: 2
     visibleDstThreshold: 800
-  - lod: 0
+  - lod: 4
     visibleDstThreshold: 1200
-  - lod: 0
-    visibleDstThreshold: 3000
+  - lod: 8
+    visibleDstThreshold: 1800
   viewer: {fileID: 945618796}
   mapMaterial: {fileID: 2100000, guid: 770a8e3c3a987fb4da76194a66c85700, type: 2}
 --- !u!1001 &2069368130
