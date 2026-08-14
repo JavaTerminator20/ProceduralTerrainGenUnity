@@ -218,5 +218,15 @@ public class ChunkVegetationRenderer {
         }
     }
 
+    // Sprosti vse zbrane primerke rastlinstva tega kosa.
+    // Matrike so navadna polja v upravljanem pomnilniku, zato jih smetar pobere sam,
+    // ko izgubijo zadnji kazalec nanje - dovolj je, da izpraznimo slovarje.
+    public void Clear() {
+        instanceLists.Clear();
+        bakedBatches.Clear();
+        prefabPartsCache.Clear();
+        isDirty = false;
+    }
+
     public bool HasVegetation => instanceLists.Count > 0;
 }

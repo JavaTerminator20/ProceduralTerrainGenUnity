@@ -14,6 +14,12 @@ public class EndlessTerrain : MonoBehaviour {
     public LODInfo[] detailLevels;
     public static float maxViewDst;
 
+    [Header("Sproscanje kosov iz pomnilnika")]
+    [Tooltip("Kos se sprosti, ko je od opazovalca oddaljen vec kot ta veckratnik maksimalne vidne razdalje. Vrednost 2 pomeni, da ostane v pomnilniku obroc kosov, ki je dvakrat sirsi od vidnega polja.")]
+    public float chunkUnloadDstMultiplier = 2f;     // veckratnik maxViewDst, pri katerem kos sprostimo iz pomnilnika
+    [Tooltip("Najvecje stevilo kosov, ki se sprosti v eni posodobitvi. Preostali pridejo na vrsto v naslednji, kar prepreci zastoj ob nenadni spremembi polozaja opazovalca.")]
+    public int maxChunkUnloadsPerUpdate = 8;        // amortizacija: koliko kosov najvec sprostimo naenkrat
+
     public Transform viewer;                        // to je igralec, ki se premika po svetu
     public Material mapMaterial;
 
@@ -26,6 +32,9 @@ public class EndlessTerrain : MonoBehaviour {
     public static Dictionary<Vector2, TerrainChunk> terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();  // slovar, kjer je kljuc koordinata chunka, vrednost pa sam chunk (zato da se vsak chunk ustvari samo enkrat, ko ga prvič vidimo, nato pa ga samo prikazujemo in skrivamo glede na to, ali je v maxViewDst)
     public static List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();  // seznam chunkov, ki so bili vidni v zadnjem update-u
 
+    static List<Vector2> chunksToUnload = new List<Vector2>();  // zacasni seznam koordinat chunkov za sprostitev (ponovno uporabljen vsak update, da ne alociramo novega seznama vsakic)
+    int chunksLoadedInMemoryDst;                                // koliko chunkov dalec od opazovalca se chunk se obdrzi v pomnilniku (v enotah chunkov)
+
 
     // separate Init() method to get some vars initiated in editor as well, not just in Start() (start doesn't get called when in Editor)
     void Init() {
@@ -35,10 +44,23 @@ public class EndlessTerrain : MonoBehaviour {
         chunkSize = MapGenerator.mapChunkSize - 1;                              // ker je stevilo vozlisc v chunku mapChunkSize, je dejanska velikost chunka (mapChunkSize-1)
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);      // koliko chunkov lahko vidimo glede na maxViewDst
 
+        // prag za sprostitev iz pomnilnika, izrazen v enotah chunkov (da lahko primerjamo cela stevila namesto razdalj)
+        // Mathf.Max poskrbi, da je prag vedno vsaj za en chunk vecji od vidnega polja, sicer bi sproscali se vidne chunke
+        chunksLoadedInMemoryDst = Mathf.Max(
+            chunksVisibleInViewDst + 1,
+            Mathf.CeilToInt(chunksVisibleInViewDst * chunkUnloadDstMultiplier)
+        );
+
+        // pravilno sprostimo vse chunke iz prejsnjega zagona (mreze, teksture, materiale), preden pocistimo slovar
+        foreach (TerrainChunk chunk in terrainChunkDictionary.Values) {
+            chunk.Dispose();
+        }
+
         // clear stale editor/play mode chunk references before destroying old child objects
         terrainChunkDictionary.Clear();
         // without this, Start() can try to hide GameObjects that were already destroyed in Init()
         terrainChunksVisibleLastUpdate.Clear();
+        chunksToUnload.Clear();
 
         // delete all existing chunk GameObjects
         while (transform.childCount > 0) {
@@ -52,41 +74,30 @@ public class EndlessTerrain : MonoBehaviour {
     }
 
     void OnDestroy() {
+        // Dispose() sprosti vse vire chunka (mreze vseh LOD nivojev, teksturo, material, podatke karte in rastlinstvo)
         foreach (TerrainChunk chunk in terrainChunkDictionary.Values) {
-            if (chunk.meshObject != null) {
-                MeshFilter mf = chunk.meshObject.GetComponent<MeshFilter>();
-                MeshRenderer mr = chunk.meshObject.GetComponent<MeshRenderer>();
-
-                if (mf != null && mf.sharedMesh != null)
-                    DestroyImmediate(mf.sharedMesh);
-
-                if (mr != null && mr.sharedMaterial != null && mr.sharedMaterial.mainTexture != null)
-                    DestroyImmediate(mr.sharedMaterial.mainTexture);
-
-                DestroyImmediate(chunk.meshObject);
-            }
+            chunk.Dispose();
         }
 
         terrainChunkDictionary.Clear();
+        terrainChunksVisibleLastUpdate.Clear();
+        chunksToUnload.Clear();
         Resources.UnloadUnusedAssets();
         System.GC.Collect();
     }
 
-    // #if UNITY_EDITOR
-    //     void OnEnable() {
-    //         Debug.Log("OnEnable in EndlessTerrain");
-    //         if (!Application.isPlaying) {
-    //             Start();
-    //             terrainChunkDictionary.Clear();
-    //             terrainChunksVisibleLastUpdate.Clear();
-    //             UnityEditor.EditorApplication.update += EditorUpdate;
-    //             Debug.Log("Subscribed to Editor update in EndlessTerrain");
-    //         }
-    //     }
+    // Unity v igri objektov ne sme unicevati takoj (DestroyImmediate), v urejevalniku pa Destroy() ne deluje.
+    // Ker je razred [ExecuteAlways], tece v obeh nacinih, zato pravo metodo izberemo tukaj na enem mestu.
+    public static void SafeDestroy(UnityEngine.Object obj) {
+        if (obj == null) { return; }
 
-    //     void OnDisable() {
-    //         UnityEditor.EditorApplication.update -= EditorUpdate;
-    //     }
+        if (Application.isPlaying) {
+            Destroy(obj);
+        } else {
+            DestroyImmediate(obj);
+        }
+    }
+
 
     public void EditorUpdate() {
         Update(); // just call your existing dequeue logic
@@ -101,7 +112,11 @@ public class EndlessTerrain : MonoBehaviour {
             UpdateVisibleChunks();
         }
 
+
+        // risanje vegetacije za vse chunke, ki so bili vidni v zadnjem update-u
         foreach (TerrainChunk chunk in terrainChunksVisibleLastUpdate) {
+            if (chunk.meshObject == null) { continue; }  // chunk je bil medtem sproscen iz pomnilnika, zato ga preskocimo
+
             if (chunk.vegetationRenderer.HasVegetation) {
                 chunk.vegetationRenderer.Draw();  // draw the vegetation instances for this chunk
             }
@@ -136,6 +151,36 @@ public class EndlessTerrain : MonoBehaviour {
                 }
             }
         }
+
+        UnloadDistantChunks(currentChunkCoordX, currentChunkCoordY);
+    }
+
+    // Sprosti chunke, ki so od opazovalca oddaljeni vec kot chunksLoadedInMemoryDst.
+    // Brez tega bi slovar samo rasel, saj se vanj chunki le dodajajo in nikoli ne odstranjujejo,
+    // kar bi pri dolgem raziskovanju sveta vodilo v napako zaradi zmanjkanja pomnilnika.
+    void UnloadDistantChunks(int currentChunkCoordX, int currentChunkCoordY) {
+        chunksToUnload.Clear();
+
+        // Razdaljo merimo kar v koordinatah chunkov (Chebysevljeva razdalja - vecja od razlike po x in po y),
+        // zato zadostuje primerjava celih stevil; ni nam treba racunati korena niti razdalje do roba chunka.
+        foreach (Vector2 coord in terrainChunkDictionary.Keys) {
+            int dstX = Mathf.Abs(Mathf.RoundToInt(coord.x) - currentChunkCoordX);
+            int dstY = Mathf.Abs(Mathf.RoundToInt(coord.y) - currentChunkCoordY);
+
+            if (Mathf.Max(dstX, dstY) > chunksLoadedInMemoryDst) {
+                chunksToUnload.Add(coord);
+
+                // amortizacija: v eni posodobitvi sprostimo najvec toliko chunkov, ostali pridejo na vrsto naslednjic
+                // (ce se opazovalec nenadoma prestavi zelo dalec, bi sicer naenkrat sprostili na stotine chunkov in povzrocili zastoj)
+                if (chunksToUnload.Count >= maxChunkUnloadsPerUpdate) { break; }
+            }
+        }
+
+        // slovarja ne smemo spreminjati med sprehodom po njem, zato brisemo sele zdaj
+        foreach (Vector2 coord in chunksToUnload) {
+            terrainChunkDictionary[coord].Dispose();
+            terrainChunkDictionary.Remove(coord);
+        }
     }
 
     // this generates all the chunks that are inside view distance of a player, but in editor without threading (because we can't use threading in editor - we don't have Update() to check when the thread finishes)
@@ -148,6 +193,7 @@ public class EndlessTerrain : MonoBehaviour {
                 Vector2 viewedChunkCoord = new Vector2(xOffset, yOffset);                                                    // coordinate of the chunk that is being generated, relative to the viewer
                 TerrainChunk chunk = new TerrainChunk(viewedChunkCoord, chunkSize, detailLevels, transform, mapMaterial);           // create a new chunk at the given coordinate
                 chunk.GenerateInEditor();                                                                                           // generate the chunk synchronously (without threading) and make it visible immediately
+                terrainChunkDictionary[viewedChunkCoord] = chunk;                                                                   // chunk zabelezimo v slovar, da ga bo naslednji Init() lahko pravilno sprostil (sicer bi njegove mreze in teksture ostale v pomnilniku)
             }
         }
     }
@@ -166,6 +212,7 @@ public class EndlessTerrain : MonoBehaviour {
 
         BiomeMapData biomeMapData;
         bool mapDataReceived;
+        bool isDisposed;                // ko je true, je chunk sproscen iz pomnilnika in ga ne smemo vec uporabljati
         int previouseLODIndex = -1;
 
         public ChunkVegetationRenderer vegetationRenderer = new ChunkVegetationRenderer();  // this will hold all the vegetation instances for this chunk
@@ -205,6 +252,8 @@ public class EndlessTerrain : MonoBehaviour {
 
             int colorMapSize = mapData.heightMap.GetLength(0);
             Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, colorMapSize, colorMapSize);
+
+            SafeDestroy(meshRenderer.sharedMaterial);  // kopijo materiala, ustvarjeno v konstruktorju, tukaj zamenjamo, zato jo moramo prej sprostiti
             meshRenderer.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             meshRenderer.sharedMaterial.mainTexture = texture;
             // we could use just "meshRenderer.material.mainTexture = texture;", but this would create some warning (ram leakage) - instead we create a new material instance for this chunk
@@ -217,6 +266,10 @@ public class EndlessTerrain : MonoBehaviour {
 
         // tukaj bomo prejeli map data iz MapGeneratorja, ko bo koncal z generiranjem map data v ločenem threadu, in bomo na podlagi tega map data-ja ustvarili mesh za nas chunk
         void OnMapDataReceived(BiomeMapData biomeMapData) {
+            // Ce je bil chunk medtem sproscen iz pomnilnika, je ta povratni klic zakasnel rezultat ozadnje niti.
+            // Brez te preverbe bi tukaj ustvarili teksturo, ki je nihce vec ne bi sprostil, in dostopali do unicenega predmeta.
+            if (isDisposed) { return; }
+
             this.biomeMapData = biomeMapData;
             mapDataReceived = true;
 
@@ -277,6 +330,7 @@ public class EndlessTerrain : MonoBehaviour {
 
         // tukaj bomo preverjali, ali je chunk v maxViewDst in ga bomo prikazovali ali skrivali glede na to (nastavimo mesh in prikazemo/skrijemo chunk)
         public void UpdateTerrainChunk() {
+            if (isDisposed) { return; }                                                         // sproscen chunk ni vec del sveta, zato ga ne posodabljamo (in ga ne smemo dodati med vidne)
             if (!mapDataReceived) { return; }                                                   // ce se map data se ni prejel, ne moremo ustvariti mesha, zato samo vrnemo
 
             float viewerDistFromNearestEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPosition));   // SqrDistance nam da kvadrat razdalje, zato vzamemo koren, da dobimo pravo razdaljo
@@ -314,12 +368,52 @@ public class EndlessTerrain : MonoBehaviour {
             SetVisible(visible);
         }
 
+        // Sprosti vse vire, ki jih drzi ta chunk.
+        // Unity poligonskih mrez, tekstur in materialov ne pobira samodejno, ceprav nanje nihce vec ne kaze,
+        // zato samo unicenje predmeta meshObject ne bi zadostovalo - pomnilnik bi ostal zaseden.
+        public void Dispose() {
+            if (isDisposed) { return; }
+            isDisposed = true;
+
+            // 1. mreze vseh nivojev podrobnosti (vsak nivo ima svojo mrezo)
+            if (lodMeshes != null) {
+                for (int i = 0; i < lodMeshes.Length; i++) {
+                    lodMeshes[i].Dispose();
+                }
+            }
+
+            // 2. mreza, ki je trenutno nastavljena (v urejevalniku je lahko druga od zgornjih)
+            if (meshFilter != null) { SafeDestroy(meshFilter.sharedMesh); }
+            if (meshCollider != null) { meshCollider.sharedMesh = null; }
+
+            // 3. tekstura in kopija materiala, ki ju ima vsak chunk svojo
+            if (meshRenderer != null && meshRenderer.sharedMaterial != null) {
+                SafeDestroy(meshRenderer.sharedMaterial.mainTexture);
+                SafeDestroy(meshRenderer.sharedMaterial);
+            }
+
+            // 4. rastlinstvo: matrike primerkov so navadna polja, zato jih pobere smetar, ko izgubijo zadnji kazalec
+            if (vegetationRenderer != null) { vegetationRenderer.Clear(); }
+
+            // 5. podatki karte (visinska karta, barvna karta, uteži biomov) - najvecji del porabe pomnilnika na chunk
+            biomeMapData = default;
+            mapDataReceived = false;
+
+            // 6. sele na koncu predmet scene, skupaj z njim pa tudi vsi primerki rastlinstva, ki so njegovi otroci
+            SafeDestroy(meshObject);
+            meshObject = null;
+
+            // ce je chunk se v seznamu vidnih, ga odstranimo, da Update() ne bi izrisoval sproscenega rastlinstva
+            terrainChunksVisibleLastUpdate.Remove(this);
+        }
+
         public void SetVisible(bool visible) {
+            if (meshObject == null) { return; }
             meshObject.SetActive(visible);
         }
 
         public bool IsVisible() {
-            return meshObject.activeSelf;
+            return meshObject != null && meshObject.activeSelf;
         }
     }
 
@@ -335,6 +429,7 @@ public class EndlessTerrain : MonoBehaviour {
         public GameObject meshObject;
 
         int lod;
+        bool isDisposed;                    // ko je true, je pripadajoci chunk sproscen in mrez ne ustvarjamo vec
         BiomeMapData biomeMapData;
         System.Action updateCallback;       // this callback is UpdateTerrainChunk() method of TerrainChunk class
 
@@ -346,6 +441,10 @@ public class EndlessTerrain : MonoBehaviour {
         }
 
         void OnMeshDataReceived(MeshData meshData) {
+            // Zahteva je bila oddana ozadnji niti, chunk pa je bil medtem lahko ze sproscen iz pomnilnika.
+            // Ce mrezo kljub temu ustvarimo, ostane v pomnilniku, ne da bi jo kdorkoli izrisal ali sprostil.
+            if (isDisposed) { return; }
+
             this.meshData = meshData;
             mesh = meshData.CreateMesh();
             hasMesh = true;
@@ -357,6 +456,19 @@ public class EndlessTerrain : MonoBehaviour {
             hasRequestedMesh = true;
             this.biomeMapData = biomeMapData;
             mapGenerator.RequestMeshData(biomeMapData, lod, OnMeshDataReceived);
+        }
+
+        // sprosti poligonsko mrezo tega nivoja podrobnosti in prekine morebitne se neobdelane zahteve
+        public void Dispose() {
+            isDisposed = true;
+
+            SafeDestroy(mesh);
+            mesh = null;
+            meshData = null;
+            biomeMapData = default;
+            meshObject = null;
+            hasMesh = false;
+            hasRequestedMesh = false;
         }
 
     }

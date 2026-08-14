@@ -161,7 +161,7 @@ public class MapGenerator : MonoBehaviour {
     // we create a new thread (actually now we use threadpool - we don't create new threads because that is very resource heavy) 
     // and call the MapDataThread method in it, which will generate the map data and then call the callback method with the generated map data as a parameter
     public void RequestMapData(Vector2 center, Action<BiomeMapData> callback) {      //CENTER is used for scrolling the noise map when player moves
-        // Create a delegate work item for the thread pool.  -- delegate variable hold ref. to a method instad of standard data value
+        // Create a delegate work item for the thread pool.  -- delegate variable holds ref. to a method instad of standard data value
         WaitCallback work = delegate {
             MapDataThread(center, callback);                                        // this method will run on a separate thread.
         };
