@@ -68,6 +68,8 @@ public class MapGenerator : MonoBehaviour {
     [Range(0.1f, 3f)]
     public float biomeHeightTransitionWidth = 1f; // <1 = sharper bands, >1 = smoother transitions
 
+    public float sharpness = 1f; // eksponent ostrenja utezi biomov: 1 = brez ostrenja (privzeto), vecje vrednosti ozijo prehodne pasove med biomi, zelo velike dajo ostre meje
+
     //public GameObject vegetation;
 
     [Header("Border Settings")]

@@ -205,6 +205,7 @@ public class BiomeGenerator {
         System.Random rndm = new System.Random(1235123 * (int)center.x + 1239012 * (int)center.y);
 
         float oceanThreshold = mapGen.oceanThreshold;    // exposed in the inspector - the rest of the coastline math below is expressed relative to this, so it can be tuned freely
+        float sharpness = mapGen.sharpness;              // exposed in the inspector - 1 = brez ostrenja, vecje vrednosti ozijo prehodne pasove med biomi
 
         // blending continent noise with height noise
         float[,] blendedHeightMap = new float[mapChunkSize, mapChunkSize];
@@ -268,7 +269,6 @@ public class BiomeGenerator {
                 }
 
                 // 2. Normalize and Sharpen
-                float sharpness = 1f;   // Adjust for tighter borders
                 float sharpSum = 0;
                 for (int i = 0; i < biomes.Length; i++) {
                     // Normalize first to 0-1 range
