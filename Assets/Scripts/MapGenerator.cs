@@ -35,16 +35,20 @@ public class MapGenerator : MonoBehaviour {
     public float continentPersistance;
     public float continentLacunarity;
 
+    /* legacy - ko nismo se imeli biomov ampak je bil celoten teren obarvan glede na visino 
     public TerrainType[] regions;
-
     public float meshHeightMultiplier;      // brez tega parametra zgleda terren cisto raven - rabimo povdariti visino
     public AnimationCurve meshHeightCurve;  //ta krivulja bo povedala, koliksen vpliv ima heightMultiplier pri doloceni visini - tam kjer je morje ne zelimo skoraj nobenega vpliva (flat), v gorah pa to zelimo
+    */
 
     public bool autoUpdate = false;
 
-    //v nekem frame-u se lahko najvec 2 chunka procesirata na enkrat - prepreci da bi se 100 novih chunkov generiralo v enem frame-u - microstutter
+
     [Header("Chunk Processing")]
-    public int maxChunkCallbacksPerFrame = 2;
+    public int maxChunkCallbacksPerFrame = 2;       // v nekem frame-u se lahko najvec 2 chunka procesirata na enkrat - prepreci da bi se 100 novih chunkov generiralo v enem frame-u - microstutter
+    public float chunkUnloadDstMultiplier = 2f;     // veckratnik maxViewDst, pri katerem kos sprostimo iz pomnilnika
+    public int maxChunkUnloadsPerUpdate = 8;        // amortizacija: koliko kosov najvec sprostimo naenkrat
+
     //TEMPERATURE MAP VARS
     [Header("BiomeNoise")]
     public float humidityFactor;
@@ -64,13 +68,10 @@ public class MapGenerator : MonoBehaviour {
     public float oceanThreshold = 0.344f;   // continentalness below which an area is ocean/coast rather than land
 
     [Header("Biomes")]
-    public Biome[] biomes = BiomeGenerator.biomes;
-    [Range(0.1f, 3f)]
     public float biomeHeightTransitionWidth = 1f; // <1 = sharper bands, >1 = smoother transitions
-
     public float sharpness = 1f; // eksponent ostrenja utezi biomov: 1 = brez ostrenja (privzeto), vecje vrednosti ozijo prehodne pasove med biomi, zelo velike dajo ostre meje
 
-    //public GameObject vegetation;
+    public Biome[] biomes = BiomeGenerator.biomes;
 
     [Header("Border Settings")]
     public bool useBorder = false;           // if true, the mesh will have a border of vertices around it that are not part of the mesh but are used to calculate normals for the edge vertices
@@ -203,7 +204,7 @@ public class MapGenerator : MonoBehaviour {
     // --------------------------------------- END OF MULTITHREADING METHODS -------------------------------------------------
 
     // ----------------------------------------- MULTITHREADING IN EDITOR -----------------------------------------------------
-
+    /*
     // poimenovano NotOnEnable, ker je OnEnable metoda ki se poklice sama od sebe (built in method)
     void NotOnEnable() {
         Debug.Log("Starting threaded generation in editor mode");
@@ -244,7 +245,7 @@ public class MapGenerator : MonoBehaviour {
     void EditorUpdate() {
         Update(); // just call your existing dequeue logic
     }
-
+    */
     //-------------------------------------- END OF MULTITHREADING IN EDITOR ---------------------------------------------------
 
     /*legacy update method (before threadpool optimization):
@@ -323,6 +324,7 @@ public class MapGenerator : MonoBehaviour {
 
 
     // this method generates the noiseMap and colorMap, and then returns them in a MapData struct
+    /* legacy - to je bil prejsnji nacin generiranja mape, ko smo imeli samo eno barvo glede na visino, brez biomov
     MapData GenerateMapData(Vector2 center) {
         float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize, mapChunkSize, noiseScale, octaves, persistance, lacunarity, seed, center + offset);
         Color[] colorMap = new Color[mapChunkSize * mapChunkSize];
@@ -340,7 +342,7 @@ public class MapGenerator : MonoBehaviour {
         }
 
         return new MapData(noiseMap, colorMap);
-    }
+    }*/
 
     // getter methods used in BioimeGenerator - so we don't have to pass all those variables and so we can call them drawing 2d map of biomes
     public float[,] GetChunkHeightMap(Vector2 center, int chunkSize) {

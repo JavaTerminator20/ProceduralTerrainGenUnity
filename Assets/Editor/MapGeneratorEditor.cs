@@ -27,12 +27,12 @@ public class MapGeneratorEditor : Editor {  //inheriting from Editor, gives us a
             mapGen.DrawMapInEditor();
         }
 
-        if (GUILayout.Button("Start Threaded Generation")) {
-            mapGen.StartThreadedGeneration();
-        }
+        // if (GUILayout.Button("Start Threaded Generation")) {
+        //     mapGen.StartThreadedGeneration();
+        // }
 
-        if (GUILayout.Button("End Threaded Generation")) {
-            mapGen.EndThreadedGeneration();
-        }
+        // if (GUILayout.Button("End Threaded Generation")) {
+        //     mapGen.EndThreadedGeneration();
+        // }
     }
 }

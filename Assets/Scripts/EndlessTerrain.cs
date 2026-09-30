@@ -14,12 +14,6 @@ public class EndlessTerrain : MonoBehaviour {
     public LODInfo[] detailLevels;
     public static float maxViewDst;
 
-    [Header("Sproscanje kosov iz pomnilnika")]
-    [Tooltip("Kos se sprosti, ko je od opazovalca oddaljen vec kot ta veckratnik maksimalne vidne razdalje. Vrednost 2 pomeni, da ostane v pomnilniku obroc kosov, ki je dvakrat sirsi od vidnega polja.")]
-    public float chunkUnloadDstMultiplier = 2f;     // veckratnik maxViewDst, pri katerem kos sprostimo iz pomnilnika
-    [Tooltip("Najvecje stevilo kosov, ki se sprosti v eni posodobitvi. Preostali pridejo na vrsto v naslednji, kar prepreci zastoj ob nenadni spremembi polozaja opazovalca.")]
-    public int maxChunkUnloadsPerUpdate = 8;        // amortizacija: koliko kosov najvec sprostimo naenkrat
-
     public Transform viewer;                        // to je igralec, ki se premika po svetu
     public Material mapMaterial;
 
@@ -35,6 +29,9 @@ public class EndlessTerrain : MonoBehaviour {
     static List<Vector2> chunksToUnload = new List<Vector2>();  // zacasni seznam koordinat chunkov za sprostitev (ponovno uporabljen vsak update, da ne alociramo novega seznama vsakic)
     int chunksLoadedInMemoryDst;                                // koliko chunkov dalec od opazovalca se chunk se obdrzi v pomnilniku (v enotah chunkov)
 
+    float chunkUnloadDstMultiplier;
+    int maxChunkUnloadsPerUpdate;
+
 
     // separate Init() method to get some vars initiated in editor as well, not just in Start() (start doesn't get called when in Editor)
     void Init() {
@@ -43,6 +40,10 @@ public class EndlessTerrain : MonoBehaviour {
         maxViewDst = detailLevels[detailLevels.Length - 1].visibleDstThreshold; // maxViewDst je enak vidni razdalji zadnjega LOD nivoja
         chunkSize = MapGenerator.mapChunkSize - 1;                              // ker je stevilo vozlisc v chunku mapChunkSize, je dejanska velikost chunka (mapChunkSize-1)
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);      // koliko chunkov lahko vidimo glede na maxViewDst
+
+
+        chunkUnloadDstMultiplier = mapGenerator.chunkUnloadDstMultiplier;
+        maxChunkUnloadsPerUpdate = mapGenerator.maxChunkUnloadsPerUpdate;
 
         // prag za sprostitev iz pomnilnika, izrazen v enotah chunkov (da lahko primerjamo cela stevila namesto razdalj)
         // Mathf.Max poskrbi, da je prag vedno vsaj za en chunk vecji od vidnega polja, sicer bi sproscali se vidne chunke
@@ -155,9 +156,9 @@ public class EndlessTerrain : MonoBehaviour {
         UnloadDistantChunks(currentChunkCoordX, currentChunkCoordY);
     }
 
-    // Sprosti chunke, ki so od opazovalca oddaljeni vec kot chunksLoadedInMemoryDst.
+    /* Sprosti chunke, ki so od opazovalca oddaljeni vec kot chunksLoadedInMemoryDst.
     // Brez tega bi slovar samo rasel, saj se vanj chunki le dodajajo in nikoli ne odstranjujejo,
-    // kar bi pri dolgem raziskovanju sveta vodilo v napako zaradi zmanjkanja pomnilnika.
+    // kar bi pri dolgem raziskovanju sveta vodilo v napako zaradi zmanjkanja pomnilnika. */
     void UnloadDistantChunks(int currentChunkCoordX, int currentChunkCoordY) {
         chunksToUnload.Clear();
 
@@ -266,8 +267,7 @@ public class EndlessTerrain : MonoBehaviour {
 
         // tukaj bomo prejeli map data iz MapGeneratorja, ko bo koncal z generiranjem map data v ločenem threadu, in bomo na podlagi tega map data-ja ustvarili mesh za nas chunk
         void OnMapDataReceived(BiomeMapData biomeMapData) {
-            // Ce je bil chunk medtem sproscen iz pomnilnika, je ta povratni klic zakasnel rezultat ozadnje niti.
-            // Brez te preverbe bi tukaj ustvarili teksturo, ki je nihce vec ne bi sprostil, in dostopali do unicenega predmeta.
+            // Ce je bil chunk medtem sproscen iz pomnilnika, je ta povratni klic zakasnel rezultat ozadnje niti. Brez te preverbe bi tukaj ustvarili teksturo, ki je nihce vec ne bi sprostil, in dostopali do unicenega predmeta.
             if (isDisposed) { return; }
 
             this.biomeMapData = biomeMapData;
@@ -368,9 +368,9 @@ public class EndlessTerrain : MonoBehaviour {
             SetVisible(visible);
         }
 
-        // Sprosti vse vire, ki jih drzi ta chunk.
+        /* Sprosti vse vire, ki jih drzi ta chunk.
         // Unity poligonskih mrez, tekstur in materialov ne pobira samodejno, ceprav nanje nihce vec ne kaze,
-        // zato samo unicenje predmeta meshObject ne bi zadostovalo - pomnilnik bi ostal zaseden.
+        // zato samo unicenje predmeta meshObject ne bi zadostovalo - pomnilnik bi ostal zaseden. */
         public void Dispose() {
             if (isDisposed) { return; }
             isDisposed = true;
@@ -392,7 +392,7 @@ public class EndlessTerrain : MonoBehaviour {
                 SafeDestroy(meshRenderer.sharedMaterial);
             }
 
-            // 4. rastlinstvo: matrike primerkov so navadna polja, zato jih pobere smetar, ko izgubijo zadnji kazalec
+            // 4. rastlinstvo: matrike primerkov so navadna polja, zato jih pobere smetar, ko izgubijo kazalec
             if (vegetationRenderer != null) { vegetationRenderer.Clear(); }
 
             // 5. podatki karte (visinska karta, barvna karta, uteži biomov) - najvecji del porabe pomnilnika na chunk
